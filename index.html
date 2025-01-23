@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Biometria Login</title>
+  <title>Login com Biometria e Firebase</title>
   <style>
     body {
       display: flex;
@@ -16,6 +16,12 @@
     }
     .container {
       text-align: center;
+      width: 100%;
+      max-width: 400px;
+      padding: 20px;
+      background: #fff;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      border-radius: 10px;
     }
     button {
       padding: 10px 20px;
@@ -26,71 +32,131 @@
       border-radius: 5px;
       cursor: pointer;
       transition: background-color 0.3s;
+      margin-top: 10px;
+      width: 100%;
     }
     button:hover {
       background-color: #3aa186;
     }
+    input {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
     .message {
       margin-top: 20px;
-      font-size: 20px;
+      font-size: 16px;
       color: #333;
-    }
-    #modal {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.6);
-      display: none;
-      justify-content: center;
-      align-items: center;
-    }
-    .modal-content {
-      background: #fff;
-      padding: 20px;
-      border-radius: 10px;
-      text-align: center;
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <button id="loginButton">Logar</button>
+    <h2>Login</h2>
+    <button id="loginBiometric">Logar com Biometria</button>
+    <p>ou</p>
+    <input type="email" id="email" placeholder="Digite seu e-mail" required>
+    <input type="password" id="password" placeholder="Digite sua senha" required>
+    <button id="loginEmail">Logar com E-mail e Senha</button>
     <div class="message" id="message"></div>
   </div>
 
-  <div id="modal">
-    <div class="modal-content">
-      <p>Use sua biometria para continuar...</p>
-      <button id="authenticateButton">Simular Biometria</button>
-    </div>
-  </div>
+  <script type="module">
+    // Importando Firebase
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, setPersistence, browserLocalPersistence, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
 
-  <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      const loginButton = document.getElementById('loginButton');
-      const modal = document.getElementById('modal');
-      const authenticateButton = document.getElementById('authenticateButton');
-      const message = document.getElementById('message');
+    // Configuração Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyAtgfGJyv1IR0ZfOR5TLkkCXphmQ21sUTQ",
+      authDomain: "teste-firebase-2-ab055.firebaseapp.com",
+      databaseURL: "https://teste-firebase-2-ab055-default-rtdb.firebaseio.com",
+      projectId: "teste-firebase-2-ab055",
+      storageBucket: "teste-firebase-2-ab055.firebasestorage.app",
+      messagingSenderId: "104641738429",
+      appId: "1:104641738429:web:61805f610a8636d7e069d4",
+      measurementId: "G-Y0GKD7L3ZC"
+    };
 
-      // Abrir modal ao clicar no botão "Logar"
-      loginButton.addEventListener('click', () => {
-        modal.style.display = 'flex';
-      });
+    // Inicializar Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
 
-      // Simular autenticação biométrica
-      authenticateButton.addEventListener('click', () => {
-        modal.style.display = 'none'; // Fechar o modal
-        message.textContent = 'Você entrou!';
-      });
+    // Configuração do botão e mensagem
+    const loginBiometric = document.getElementById('loginBiometric');
+    const loginEmail = document.getElementById('loginEmail');
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    const message = document.getElementById('message');
 
-      // Fechar modal ao clicar fora dele
-      window.addEventListener('click', (event) => {
-        if (event.target === modal) {
-          modal.style.display = 'none';
+    // Configurando persistência da sessão
+    setPersistence(auth, browserLocalPersistence);
+
+    // Autenticação com biometria
+    loginBiometric.addEventListener('click', async () => {
+      try {
+        if (!window.PublicKeyCredential) {
+          message.textContent = "Seu navegador não suporta autenticação biométrica.";
+          return;
         }
-      });
+
+        // Configuração de autenticação biométrica (simulação)
+        const publicKey = {
+          challenge: Uint8Array.from('randomChallenge1234567890', c => c.charCodeAt(0)),
+          rp: { name: "Meu Site Seguro" },
+          user: {
+            id: Uint8Array.from('uniqueUserID123', c => c.charCodeAt(0)),
+            name: "usuario@exemplo.com",
+            displayName: "Usuário Firebase"
+          },
+          pubKeyCredParams: [{ type: "public-key", alg: -7 }],
+          authenticatorSelection: {
+            authenticatorAttachment: "platform",
+            userVerification: "required"
+          },
+          timeout: 60000
+        };
+
+        const credential = await navigator.credentials.create({ publicKey });
+
+        if (credential) {
+          message.textContent = "Autenticação biométrica realizada com sucesso!";
+        } else {
+          message.textContent = "Autenticação cancelada ou falhou.";
+        }
+      } catch (error) {
+        console.error(error);
+        message.textContent = "Erro na autenticação biométrica: " + error.message;
+      }
+    });
+
+    // Autenticação com e-mail e senha
+    loginEmail.addEventListener('click', async () => {
+      const email = emailInput.value;
+      const password = passwordInput.value;
+
+      if (!email || !password) {
+        message.textContent = "Por favor, preencha todos os campos.";
+        return;
+      }
+
+      try {
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        message.textContent = `Bem-vindo, ${userCredential.user.email}!`;
+      } catch (error) {
+        console.error(error);
+        message.textContent = "Erro no login com e-mail e senha: " + error.message;
+      }
+    });
+
+    // Verificar usuário logado ao carregar a página
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        message.textContent = `Bem-vindo de volta, ${user.email}!`;
+      }
     });
   </script>
 </body>
